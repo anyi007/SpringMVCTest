@@ -8,16 +8,26 @@ import com.xiaomi.dao.GoodsDao;
 import com.xiaomi.dao.StoreDao;
 import com.xiaomi.dao.UserBeanDao;
 import com.xiaomi.utils.CheckStringEmptyUtils;
+
+
+import com.xiaomi.utils.ImageUtil;
 import com.xiaomi.utils.JSONUtils;
+import com.xiaomi.utils.UUIDUtil;
+import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
+
+
+
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.util.ArrayList;
+
 
 
 @Controller
@@ -123,6 +133,10 @@ public class MainController {
      * @param response
      * @param page
      * @param size
+     * @ResponseBody 该注解用于将Controller的方法返回的对象，根据HTTP Request Header的Accept的内容,通过适当的HttpMessageConverter转换为指定格式后，写入到Response对象的body数据区。
+     * 使用时机：
+     * 返回的数据不是html标签的页面，而是其他某种格式的数据时（如json、xml等）使用.
+     * 配置返回JSON和XML数据
      */
     @ResponseBody
     @RequestMapping("/getDataList")
@@ -149,142 +163,135 @@ public class MainController {
         }
     }
 
-//    @RequestMapping("/upload2")
-//    public void upload2(HttpServletRequest request) throws IllegalStateException, IOException {
-//        System.out.println("11111111111111111");
-//        //创建一个通用的多部分解析器
-//        CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver(request.getSession().getServletContext());
-//        //判断 request 是否有文件上传,即多部分请求
-//        if (multipartResolver.isMultipart(request)) {
-//            //转换成多部分request
-//            MultipartHttpServletRequest multiRequest = (MultipartHttpServletRequest) request;
-//            //取得request中的所有文件名
-//            Iterator<String> iter = multiRequest.getFileNames();
-//            while (iter.hasNext()) {
-//                //记录上传过程起始时的时间，用来计算上传时间
-//                int pre = (int) System.currentTimeMillis();
-//                //取得上传文件
-//                MultipartFile file = multiRequest.getFile(iter.next());
-//                if (file != null) {
-//                    //取得当前上传文件的文件名称
-//                    String myFileName = file.getOriginalFilename();
-//                    //如果名称不为“”,说明该文件存在，否则说明该文件不存在
-//                    if (myFileName.trim() != "") {
-//                        System.out.println(myFileName);
-//                        //重命名上传后的文件名
-//                        String fileName = "demoUpload" + file.getOriginalFilename();
-//                        //定义上传路径
-//                        String path = "D:/" + fileName;
-//                        File localFile = new File(path);
-//                        file.transferTo(localFile);
-//                    }
-//                }
-//                //记录上传该文件后的时间
-//                int finaltime = (int) System.currentTimeMillis();
-//                System.out.println(finaltime - pre);
-//            }
-//        }
-//    }
-
+    @ResponseBody
     @RequestMapping("/upload2")
-    public void fileUpload(HttpServletRequest request, HttpServletResponse response, HttpSession session) throws IOException {
-        System.out.println("文件上传接口");
-        //从request中获取流信息
-        InputStream inputStream = request.getInputStream();
-        String tempFileName = "D:tempFile";
-        //指向临时文件
-        File file = new File(tempFileName);
-        //输出流指向临时文件
-        FileOutputStream outputStream = new FileOutputStream(tempFileName);
-
-        byte b[] = new byte[1024];
-        int n;
-        while ((n = inputStream.read(b)) != -1) {
-            outputStream.write(b, 0, n);
+    public String upload2(HttpSession session, @RequestParam(required = false, value = "file") MultipartFile file) throws IllegalStateException, IOException {
+        System.out.println("11111111111111111");
+        String name = "";
+        if (file.isEmpty()) {
+            System.out.println("2222222222");
+            return name;
+        } else {
+            System.out.println("33333333333333");
         }
-        //关闭输入输出流
-        outputStream.close();
-        inputStream.close();
-        System.out.println("保存临时文件成功");
+        try {
+            String suffixName = file.getOriginalFilename().split("\\.")[1];
+            String thefileName = "/headimg/" + UUIDUtil.getUUID();
+            String fileName = thefileName + "." + suffixName;
+//            String realPath = session.getServletContext().getRealPath("/") + "static/";
+//            File file1 = new File(realPath + fileName);
+            System.out.println("absoluteuploadpath:"+ ImageUtil.getAbsoluteUploadPath());
+            System.out.println("absoluteuploadpath1:"+ImageUtil.absoluteUploadPath);
+            File file1 = new File(ImageUtil.getAbsoluteUploadPath() + fileName);
+            System.out.println("11asd:" + file1.getPath());
+            FileUtils.writeByteArrayToFile(file1, file.getBytes());
 
-        //获取上传文件的名称
-        RandomAccessFile r = new RandomAccessFile(tempFileName, "r");
-        r.readLine();
-        String str = r.readLine();
-        int beginIndex = str.lastIndexOf("\\") + 1;
-        int endIndex = str.lastIndexOf("\"");
-        String filename = str.substring(beginIndex, endIndex);
-
-
-        //获取上传文件的内容的起止位置
-        r.seek(0);
-        long startPosition = 0;
-        int i = 1;
-//        文件内容的开始位置
-        while ((n = r.read()) != -1 && i <= 4) {
-            if (n == '\n') {
-                startPosition = r.getFilePointer();
-                i++;
-            }
+            name = ImageUtil.relativeUploadPath + fileName;
+            System.out.println("11name:" + name);
+        } catch (IOException var7) {
+            var7.printStackTrace();
+            System.out.println("IOException:" + var7.toString());
         }
-        startPosition = startPosition - 1;
-        System.out.println("获取文件内容起始");
-        //文件内容的结束位置
-        r.seek(r.length());
-        long endPosition = r.getFilePointer();
-        int j = 1;
-        while (endPosition >= 0 && j <= 2) {
-            endPosition--;
-            r.seek(endPosition);
-            if (r.readByte() == '\n') {
-                j++;
-            }
-        }
-        endPosition = endPosition - 1;
-        System.out.println("获取文件内容结束");
-
-        //文件的保存路径
-        String realPath = session.getServletContext().getRealPath("/") + "static";
-        File file1 = new File(realPath);
-        if (!file1.exists()) {
-            file1.mkdir();
-        }
-
-        File saveFile = new File(realPath, filename);
-        RandomAccessFile randomAccessFile = new RandomAccessFile(saveFile, "rw");
-        //从临时文件当中读取文件内容（根据起止位置获取）
-        r.seek(startPosition);
-        while (startPosition < endPosition) {
-            randomAccessFile.write(r.readByte());
-            startPosition = r.getFilePointer();
-        }
-
-        //关闭流  删除临时文件；
-        randomAccessFile.close();
-        r.close();
-        file.delete();
-        System.out.println("上传成功了");
-
+        return name;
     }
-//    public void fileUpload(@RequestParam MultipartFile[] photos, HttpSession session) throws IllegalStateException, IOException {
-//        System.out.println("11111111111111111");
-//        //服务端的imges目录需要手动创建好
-//        String path = session.getServletContext().getRealPath("/static");
-//        for (int i = 0; i < photos.length; i++) {
-//            if (!photos[i].isEmpty()) {
-//                String fileName = photos[i].getOriginalFilename();
-//                if (fileName.endsWith(".jpg") || fileName.endsWith(".png")) {
-//                    File file = new File(path, fileName);
-//                    //完成文件上传
-//                    photos[i].transferTo(file);
-//                } else {
-//                    //失败返回
-//                    System.out.println("失败失败");
-//                }
+
+//    @ResponseBody
+//    @RequestMapping("/upload2")
+//    public String fileUpload(HttpServletRequest request, HttpServletResponse response, HttpSession session) throws IOException {
+//        System.out.println("文件上传接口");
+//        //从request中获取流信息
+//        InputStream fileSource = request.getInputStream();
+//        String tempFileName = "D:/tempFile";
+//        //指向临时文件
+//        File tempFile = new File(tempFileName);
+//        //输出流指向临时文件
+//        FileOutputStream outputStream = new FileOutputStream(tempFileName);
+//
+//        byte b[] = new byte[1024];
+//        int n;
+//        while ((n = fileSource.read(b)) != -1) {
+//            outputStream.write(b, 0, n);
+//        }
+//        //关闭输入输出流
+//        outputStream.close();
+//        fileSource.close();
+//        System.out.println("保存临时文件成功");
+//
+//        //获取上传文件的名称
+//        RandomAccessFile randomFile = new RandomAccessFile(tempFileName, "r");
+//        randomFile.readLine();
+//        String str = randomFile.readLine();
+//        int beginIndex = str.lastIndexOf("\\") + 1;
+//        int endIndex = str.lastIndexOf("\"");
+//        String filename = str.substring(beginIndex, endIndex);
+//        System.out.println("获取文件名称：" + filename);
+//
+//        //获取上传文件的内容的起止位置
+//        randomFile.seek(0);
+//        long startPosition = 0;
+//        int i = 1;
+////        文件内容的开始位置
+//        while ((n = randomFile.read()) != -1 && i <= 4) {
+//            if (n == '\n') {
+//                startPosition = randomFile.getFilePointer();
+//                i++;
 //            }
 //        }
+//        startPosition = startPosition - 1;
+//        System.out.println("获取文件内容起始");
+//        //文件内容的结束位置
+//        randomFile.seek(randomFile.length());
+//        long endPosition = randomFile.getFilePointer();
+//        int j = 1;
+//        while (endPosition >= 0 && j <= 2) {
+//            endPosition--;
+//            randomFile.seek(endPosition);
+//            if (randomFile.readByte() == '\n') {
+//                j++;
+//            }
+//        }
+//        endPosition = endPosition - 1;
+//        System.out.println("获取文件内容结束");
+//
+//        //文件的保存路径
+//        String realPath = session.getServletContext().getRealPath("/") + "static/";
+//        File file1 = new File(realPath);
+//        if (!file1.exists()) {
+//            file1.mkdir();
+//        }
+//
+//        File saveFile = new File(realPath, filename);
+//        RandomAccessFile randomAccessFile = new RandomAccessFile(saveFile, "rw");
+//        //从临时文件当中读取文件内容（根据起止位置获取）
+//        randomFile.seek(startPosition);
+//        while (startPosition < endPosition) {
+//            randomAccessFile.write(randomFile.readByte());
+//            startPosition = randomFile.getFilePointer();
+//        }
+//
+//        //关闭流  删除临时文件；
+//        randomAccessFile.close();
+//        randomFile.close();
+////        file.delete();
+//        System.out.println("上传成功了" + realPath);
+//
+//        return realPath;
 //    }
-
+//
+//    public String uploadPictures(MultipartFile file0) {
+//        String name = "";
+//        try {
+//            String suffixName = file0.getOriginalFilename().split("\\.")[1];
+//            String thefileName = "/headimg/" + UUIDUtil.getUUID();
+//            String fileName = thefileName + "." + suffixName;
+//            File file = new File(ImageUtil.absoluteUploadPath + fileName);
+//            FileUtils.writeByteArrayToFile(file, file0.getBytes());
+//            name = ImageUtil.relativeUploadPath + fileName;
+//        } catch (IOException var7) {
+//            var7.printStackTrace();
+//        }
+//        return name;
+//    }
 
     private String finalData(PrintWriter out, String msg, int errorcode, Object data) {
         AppBean mBean = new AppBean(msg, errorcode, data);
