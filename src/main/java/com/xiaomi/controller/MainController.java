@@ -10,9 +10,7 @@ import com.xiaomi.dao.UserBeanDao;
 import com.xiaomi.utils.CheckStringEmptyUtils;
 
 
-import com.xiaomi.utils.ImageUtil;
 import com.xiaomi.utils.JSONUtils;
-import com.xiaomi.utils.UUIDUtil;
 import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,13 +19,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 
-
-
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.util.ArrayList;
-
 
 
 @Controller
@@ -53,77 +48,57 @@ public class MainController {
      */
     @RequestMapping("/getShop")
     public void getShop(HttpServletResponse response, String userid) {
-        response.setHeader("Content-type", "textml;charset=UTF-8");
-        response.setCharacterEncoding("UTF-8");
-        response.setContentType("text/html;charset=utf-8");
-
-        PrintWriter out = null;
-        try {
-            out = response.getWriter();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         JsonArray jsonArray = new JsonArray();
-
-        String msg = "失败";
-        int errorcode = -100;
-        try {
-            if (CheckStringEmptyUtils.IsEmpty(userid)) {
-                msg = "userid是空的";
-                System.out.println("userid是空的");
-            } else {
-                System.out.println("userid:" + userid);
-                //先去查询所有的购物车
-                ArrayList<CartBean> cartByUserId = CartDao.getCartByUserId(1);
-                ArrayList<Goods> mGoodsList = new ArrayList<>();
-                ArrayList<Store> mStoreList = new ArrayList<>();//店铺的列表
-                ArrayList<Integer> mStoreIdList = new ArrayList<>();
-                if (cartByUserId != null) {
-                    //然后根据购物车的店铺id去查询店铺
-                    for (CartBean cartBean : cartByUserId) {
-                        if (!mStoreIdList.contains(cartBean.getStoreId())) {
-                            Store storeListByStoreId = StoreDao.getStoreListByStoreId(cartBean.getStoreId());
-                            if (storeListByStoreId != null) {
-                                mStoreList.add(storeListByStoreId);
-                                mStoreIdList.add(cartBean.getStoreId());
-                            }
-                        }
-                        mGoodsList.add(GoodsDao.getAllGoodsByGoodId(cartBean.getGoodId()));
-                    }
-                }
-
-                ArrayList<AppStore> mAppStoreList = new ArrayList<>();
-                //遍历所有的商铺
-                for (Store store : mStoreList) {
-                    AppStore mAppStore = new AppStore();
-                    mAppStore.setStoreId(store.getStoreId());
-                    mAppStore.setStoreName(store.getStoreName());
-                    ArrayList<Goods> mAppGoodList = new ArrayList<>();
-                    //然后去查找商铺里的商品
-                    for (int i = 0; i < mGoodsList.size(); ) {
-                        if (mGoodsList.get(i).getStoreId() == store.getStoreId()) {
-                            mGoodsList.get(i).setGoodNumber(CartDao.getGoodNumberByGoodId(mGoodsList.get(i).getGoodId()));
-                            mAppGoodList.add(mGoodsList.get(i));
-                            mGoodsList.remove(mGoodsList.get(i));
-                        } else {
-                            i++;
-                        }
-                    }
-                    mAppStore.setmGoodList(mAppGoodList);
-                    mAppStoreList.add(mAppStore);
-                }
-                jsonArray = JSONUtils.getJSONArrayByList(mAppStoreList);
-                errorcode = 200;
-                msg = "成功";
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            msg = "失败";
+        String msg = "成功";
+        int errorcode = 200;
+        if (CheckStringEmptyUtils.IsEmpty(userid)) {
+            msg = "userid是空的";
             errorcode = -100;
-        } finally {
-            finalData(out, msg, errorcode, jsonArray);
+            System.out.println("userid是空的");
+        } else {
+            System.out.println("userid:" + userid);
+            //先去查询所有的购物车
+            ArrayList<CartBean> cartByUserId = CartDao.getCartByUserId(1);
+            ArrayList<Goods> mGoodsList = new ArrayList<>();
+            ArrayList<Store> mStoreList = new ArrayList<>();//店铺的列表
+            ArrayList<Integer> mStoreIdList = new ArrayList<>();
+            if (cartByUserId != null) {
+                //然后根据购物车的店铺id去查询店铺
+                for (CartBean cartBean : cartByUserId) {
+                    if (!mStoreIdList.contains(cartBean.getStoreId())) {
+                        Store storeListByStoreId = StoreDao.getStoreListByStoreId(cartBean.getStoreId());
+                        if (storeListByStoreId != null) {
+                            mStoreList.add(storeListByStoreId);
+                            mStoreIdList.add(cartBean.getStoreId());
+                        }
+                    }
+                    mGoodsList.add(GoodsDao.getAllGoodsByGoodId(cartBean.getGoodId()));
+                }
+            }
+
+            ArrayList<AppStore> mAppStoreList = new ArrayList<>();
+            //遍历所有的商铺
+            for (Store store : mStoreList) {
+                AppStore mAppStore = new AppStore();
+                mAppStore.setStoreId(store.getStoreId());
+                mAppStore.setStoreName(store.getStoreName());
+                ArrayList<Goods> mAppGoodList = new ArrayList<>();
+                //然后去查找商铺里的商品
+                for (int i = 0; i < mGoodsList.size(); ) {
+                    if (mGoodsList.get(i).getStoreId() == store.getStoreId()) {
+                        mGoodsList.get(i).setGoodNumber(CartDao.getGoodNumberByGoodId(mGoodsList.get(i).getGoodId()));
+                        mAppGoodList.add(mGoodsList.get(i));
+                        mGoodsList.remove(mGoodsList.get(i));
+                    } else {
+                        i++;
+                    }
+                }
+                mAppStore.setmGoodList(mAppGoodList);
+                mAppStoreList.add(mAppStore);
+            }
+            jsonArray = JSONUtils.getJSONArrayByList(mAppStoreList);
         }
+        finalData(response, msg, errorcode, jsonArray);
     }
 
 
@@ -141,164 +116,98 @@ public class MainController {
     @ResponseBody
     @RequestMapping("/getDataList")
     public String getDataList(HttpServletResponse response, int page, int size) {
-        response.setHeader("Content-type", "textml;charset=UTF-8");
-        response.setCharacterEncoding("UTF-8");
-        response.setContentType("text/html;charset=utf-8");
-        String msg = "失败";
-        int errorcode = -100;
-        PrintWriter out = null;
-        JsonArray jsonArray = new JsonArray();
-        try {
-            out = response.getWriter();
-            ArrayList<UserBean> userList = UserBeanDao.getUserList(page, size);
-            jsonArray = JSONUtils.getJSONArrayByList(userList);
-            errorcode = 200;
-            msg = "成功";
-        } catch (Exception e) {
-            e.printStackTrace();
-            msg = "失败";
+        ArrayList<UserBean> userList = UserBeanDao.getUserList(page, size);
+        JsonArray jsonArray = JSONUtils.getJSONArrayByList(userList);
+        String msg = "成功";
+        int errorcode = 200;
+        return finalData(response, msg, errorcode, jsonArray);
+    }
+
+
+    /**
+     * 文件的上传
+     *
+     * @param response
+     * @param session
+     * @param file
+     * @return
+     * @throws IllegalStateException
+     * @throws IOException
+     */
+    @ResponseBody
+    @RequestMapping("/uploadFile")
+    public String uploadFile(HttpServletResponse response, HttpSession session, @RequestParam(value = "file") MultipartFile file) throws IOException {
+        String realPath = "";
+        String msg = "成功";
+        int errorcode = 200;
+        if (file == null || file.isEmpty()) {
+            msg = "文件不能为空";
             errorcode = -100;
-        } finally {
-            return finalData(out, msg, errorcode, jsonArray);
+        } else {
+            String RootPath = session.getServletContext().getRealPath("/");
+            realPath = "static/" + System.currentTimeMillis() + ".jpg";
+            FileUtils.copyInputStreamToFile(file.getInputStream(), new File(RootPath + realPath));
         }
+        return finalData(response, msg, errorcode, realPath);
     }
 
     @ResponseBody
-    @RequestMapping("/upload2")
-    public String upload2(HttpSession session, @RequestParam(required = false, value = "file") MultipartFile file) throws IllegalStateException, IOException {
-        System.out.println("11111111111111111");
-        String name = "";
-        if (file.isEmpty()) {
-            System.out.println("2222222222");
-            return name;
+    @RequestMapping("/uploadFiles")
+    public String uploadFiles(HttpServletResponse response, HttpSession session, @RequestParam(value = "file") MultipartFile[] files) throws IOException {
+        System.out.println("批量上传");
+        String realPath = "";
+        String msg = "成功";
+        int errorcode = 200;
+        if (files == null || files.length == 0) {
+            msg = "文件不能为空";
+            errorcode = -100;
         } else {
-            System.out.println("33333333333333");
+            String RootPath = session.getServletContext().getRealPath("/");
+            for (MultipartFile file : files) {
+                String savePath = "static/" + System.currentTimeMillis() + ".jpg";
+                FileUtils.copyInputStreamToFile(file.getInputStream(), new File(RootPath + savePath));
+                realPath += savePath + ",";
+            }
         }
-        try {
-            String suffixName = file.getOriginalFilename().split("\\.")[1];
-            String thefileName = "/headimg/" + UUIDUtil.getUUID();
-            String fileName = thefileName + "." + suffixName;
-//            String realPath = session.getServletContext().getRealPath("/") + "static/";
-//            File file1 = new File(realPath + fileName);
-            System.out.println("absoluteuploadpath:"+ ImageUtil.getAbsoluteUploadPath());
-            System.out.println("absoluteuploadpath1:"+ImageUtil.absoluteUploadPath);
-            File file1 = new File(ImageUtil.getAbsoluteUploadPath() + fileName);
-            System.out.println("11asd:" + file1.getPath());
-            FileUtils.writeByteArrayToFile(file1, file.getBytes());
-
-            name = ImageUtil.relativeUploadPath + fileName;
-            System.out.println("11name:" + name);
-        } catch (IOException var7) {
-            var7.printStackTrace();
-            System.out.println("IOException:" + var7.toString());
-        }
-        return name;
+        realPath = realPath.length() > 0 ? realPath.substring(0, realPath.length() - 1) : realPath;
+        return finalData(response, msg, errorcode, realPath);
     }
 
-//    @ResponseBody
-//    @RequestMapping("/upload2")
-//    public String fileUpload(HttpServletRequest request, HttpServletResponse response, HttpSession session) throws IOException {
-//        System.out.println("文件上传接口");
-//        //从request中获取流信息
-//        InputStream fileSource = request.getInputStream();
-//        String tempFileName = "D:/tempFile";
-//        //指向临时文件
-//        File tempFile = new File(tempFileName);
-//        //输出流指向临时文件
-//        FileOutputStream outputStream = new FileOutputStream(tempFileName);
-//
-//        byte b[] = new byte[1024];
-//        int n;
-//        while ((n = fileSource.read(b)) != -1) {
-//            outputStream.write(b, 0, n);
-//        }
-//        //关闭输入输出流
-//        outputStream.close();
-//        fileSource.close();
-//        System.out.println("保存临时文件成功");
-//
-//        //获取上传文件的名称
-//        RandomAccessFile randomFile = new RandomAccessFile(tempFileName, "r");
-//        randomFile.readLine();
-//        String str = randomFile.readLine();
-//        int beginIndex = str.lastIndexOf("\\") + 1;
-//        int endIndex = str.lastIndexOf("\"");
-//        String filename = str.substring(beginIndex, endIndex);
-//        System.out.println("获取文件名称：" + filename);
-//
-//        //获取上传文件的内容的起止位置
-//        randomFile.seek(0);
-//        long startPosition = 0;
-//        int i = 1;
-////        文件内容的开始位置
-//        while ((n = randomFile.read()) != -1 && i <= 4) {
-//            if (n == '\n') {
-//                startPosition = randomFile.getFilePointer();
-//                i++;
-//            }
-//        }
-//        startPosition = startPosition - 1;
-//        System.out.println("获取文件内容起始");
-//        //文件内容的结束位置
-//        randomFile.seek(randomFile.length());
-//        long endPosition = randomFile.getFilePointer();
-//        int j = 1;
-//        while (endPosition >= 0 && j <= 2) {
-//            endPosition--;
-//            randomFile.seek(endPosition);
-//            if (randomFile.readByte() == '\n') {
-//                j++;
-//            }
-//        }
-//        endPosition = endPosition - 1;
-//        System.out.println("获取文件内容结束");
-//
-//        //文件的保存路径
-//        String realPath = session.getServletContext().getRealPath("/") + "static/";
-//        File file1 = new File(realPath);
-//        if (!file1.exists()) {
-//            file1.mkdir();
-//        }
-//
-//        File saveFile = new File(realPath, filename);
-//        RandomAccessFile randomAccessFile = new RandomAccessFile(saveFile, "rw");
-//        //从临时文件当中读取文件内容（根据起止位置获取）
-//        randomFile.seek(startPosition);
-//        while (startPosition < endPosition) {
-//            randomAccessFile.write(randomFile.readByte());
-//            startPosition = randomFile.getFilePointer();
-//        }
-//
-//        //关闭流  删除临时文件；
-//        randomAccessFile.close();
-//        randomFile.close();
-////        file.delete();
-//        System.out.println("上传成功了" + realPath);
-//
-//        return realPath;
-//    }
-//
-//    public String uploadPictures(MultipartFile file0) {
-//        String name = "";
-//        try {
-//            String suffixName = file0.getOriginalFilename().split("\\.")[1];
-//            String thefileName = "/headimg/" + UUIDUtil.getUUID();
-//            String fileName = thefileName + "." + suffixName;
-//            File file = new File(ImageUtil.absoluteUploadPath + fileName);
-//            FileUtils.writeByteArrayToFile(file, file0.getBytes());
-//            name = ImageUtil.relativeUploadPath + fileName;
-//        } catch (IOException var7) {
-//            var7.printStackTrace();
-//        }
-//        return name;
-//    }
+    /**
+     * 开始设置编码（貌似不用了，难道是配置文件）
+     *
+     * @param response
+     */
+    private void setResponseEncoding(HttpServletResponse response) {
+        response.setHeader("Content-type", "textml;charset=UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("text/html;charset=utf-8");
+    }
 
-    private String finalData(PrintWriter out, String msg, int errorcode, Object data) {
+    /**
+     * 设置最后的返回值
+     *
+     * @param response
+     * @param msg
+     * @param errorcode
+     * @param data
+     * @return
+     */
+    private String finalData(HttpServletResponse response, String msg, int errorcode, Object data) {
+        PrintWriter writer = null;
+        try {
+            writer = response.getWriter();
+        } catch (IOException e) {
+            errorcode = -100;
+            data = null;
+            msg = e.toString();
+            e.printStackTrace();
+        }
         AppBean mBean = new AppBean(msg, errorcode, data);
         Gson gson = new Gson();
-        out.print(gson.toJson(mBean));
-        out.flush();
-        out.close();
+        writer.print(gson.toJson(mBean));
+        writer.flush();
+        writer.close();
         return gson.toJson(mBean);
     }
 
